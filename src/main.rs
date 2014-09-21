@@ -11,48 +11,24 @@ use image::GenericImage;
 use num::complex::Complex;
 
 
-fn save_png(world: &World) {
+fn save_png(world: &mut World) {
     let max_iterations = 256u16;
 
     let imgx: u32 = world.width as u32;
     let imgy: u32 = world.height as u32;
 
-    let scalex = 4.0 / imgx as f32;
-    let scaley = 4.0 / imgy as f32;
-
     let mut imbuf = image::ImageBuf::new(imgx, imgy);
 
     for y in range(0, imgy) {
-        let cy = y as f32 * scaley - 2.0;
-        
         for x in range(0, imgx) {
-            let cx = x as f32 * scalex - 2.0;
-
-            let mut z = Complex::new(cx, cy);
-            let c = Complex::new(-0.4, 0.6);
-
-            let mut i = 0;
-
-            for t in range(0, max_iterations) {
-                if z.norm() > 2.0 {
-                    break
-                }
-
-                z = z * z + c;
-                i = t;
-            }
-
-            // Create an 8bit pixel of type Luma and value i
-            let pixel = image::Luma(i as u8);
-
-            // Put a pixel in the image at coordinates x and y
+            let pixel = match world.sample(x as int, y as int) {
+                f if f < -0.5 => image::Rgb(156, 196, 251),
+                f if f <  0.0 => image::Rgb(235, 224, 168),
+                f if f <  0.5 => image::Rgb(158, 191, 105),
+                f if f <  1.0 => image::Rgb(79, 120, 14),
+                _ => image::Rgb(250, 250, 250),
+            };
             imbuf.put_pixel(x, y, pixel);
-        }
-    }
-
-    for y in range(0, imgy as int) {
-        for x in range(0, imgx as int) {
-            let mut value = world.sample(x, y);
         }
     }
 
@@ -60,7 +36,7 @@ fn save_png(world: &World) {
    let fout = File::create(&Path::new("fractal.png")).unwrap();
 
    //We must indicate the image's color type and what format to save as.
-   let _    = image::ImageLuma8(imbuf).save(fout, image::PNG);
+   let _    = image::ImageRgb8(imbuf).save(fout, image::PNG);
 }
 
 fn modulo(a: int, b: int) -> int {
@@ -181,11 +157,11 @@ fn main() {
     //while !window.is_closed() {
     //    window.wait_events();
     //}
-    let mut world = World::new(100i, 100i);
-    world.generate(2i);
-    world.print();
+    let mut world = World::new(200i, 200i);
+    world.generate(10i);
+    //world.print();
 
-    save_png(&world);
+    save_png(&mut world);
 }
 
 
