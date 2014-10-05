@@ -4,14 +4,6 @@ name = "procedural-islands-rs"
 version = "0.0.1"
 authors = ["Velais <velais@live.com>"]
 
-[dependencies.gl_init]
-
-git = "https://github.com/tomaka/gl-init-rs.git"
-
-[dependencies.gl]
-
-git = "https://github.com/bjz/gl-rs"
-
 [dependencies.image]
 
 git = "https://github.com/PistonDevelopers/rust-image"

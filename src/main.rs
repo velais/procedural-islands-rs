@@ -1,6 +1,4 @@
-extern crate gl_init;
 extern crate libc;
-extern crate gl;
 extern crate num;
 extern crate image;
 
