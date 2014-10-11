@@ -146,18 +146,8 @@ impl World {
 
 
 fn main() {
-    //let window = gl_init::Window::new().unwrap();
-    //unsafe { window.make_current() };
-    //gl::load_with(|sym| window.get_proc_address(sym));
-    //gl::ClearColor(0.0, 1.0, 0.0, 1.0);
-    //gl::Clear(gl::COLOR_BUFFER_BIT);
-    //window.swap_buffers();
-    //while !window.is_closed() {
-    //    window.wait_events();
-    //}
     let mut world = World::new(200i, 200i);
-    world.generate(10i);
-    //world.print();
+    world.generate(16i);
 
     save_png(&mut world);
 }
