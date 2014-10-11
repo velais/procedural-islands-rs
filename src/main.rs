@@ -8,6 +8,7 @@ use std::io::File;
 use image::GenericImage;
 use num::complex::Complex;
 
+mod noise;
 
 fn save_png(world: &mut World) {
     let max_iterations = 256u16;
@@ -20,10 +21,12 @@ fn save_png(world: &mut World) {
     for y in range(0, imgy) {
         for x in range(0, imgx) {
             let pixel = match world.sample(x as int, y as int) {
-                f if f < -0.5 => image::Rgb(156, 196, 251),
-                f if f <  0.0 => image::Rgb(235, 224, 168),
+                f if f < -0.2 => image::Rgb(20, 80, 163),
+                f if f <  0.0 => image::Rgb(156, 196, 251),
+                f if f <  0.2 => image::Rgb(235, 224, 168),
                 f if f <  0.5 => image::Rgb(158, 191, 105),
-                f if f <  1.0 => image::Rgb(79, 120, 14),
+                f if f <  1.2 => image::Rgb(79, 120, 14),
+                f if f <  1.5 => image::Rgb(94, 102, 112),
                 _ => image::Rgb(250, 250, 250),
             };
             imbuf.put_pixel(x, y, pixel);
@@ -81,19 +84,38 @@ impl World {
     }
 
     pub fn generate(&mut self, size: int) {
-        let mut rng = task_rng();
-        for x in range(0i, self.width * self.height) {
-            self.map.push(rng.gen_range(-1.0, 1.0));
-        }
-
         let mut scale: f32 = 1.0;
         let mut sample_size = size;
+
+        self.seed();
         while sample_size > 1 {
             self.diamond_square(sample_size, scale);
             sample_size /= 2;
             scale /= 2.0;
         }
     }
+
+    fn seed(&mut self) {
+        let mut rng = task_rng();
+        for y in range(0i, self.height) {
+            for x in range(0i, self.width) {
+                let value = if y < 5 || y > 195 || x < 5 || x > 195 {
+                    -1.5f32
+                } else {
+                    rng.gen_range(-1.0, 1.0)
+                };
+
+                
+                self.map.push(value);
+            }
+        }
+        self.set_sample(0, 0, -2.0);
+        self.set_sample(200, 0, -2.0);
+        self.set_sample(0, 200, -2.0);
+        self.set_sample(200, 200, -2.0);
+        self.set_sample(100, 100, 2.0);
+    }
+
 
     pub fn sample(&mut self, x: int, y: int) -> f32 {
         self.map[(modulo(x ,(self.width - 1)) + modulo(y ,(self.height - 1)) * self.width) as uint]
@@ -150,6 +172,8 @@ fn main() {
     world.generate(16i);
 
     save_png(&mut world);
+
+    noise::tester();
 }
 
 
