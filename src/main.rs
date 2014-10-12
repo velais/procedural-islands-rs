@@ -1,48 +1,13 @@
 extern crate libc;
 extern crate num;
-extern crate image;
 
 use std::rand::{task_rng, Rng};
 use std::iter::range_step;
-use std::io::File;
-use image::GenericImage;
 use num::complex::Complex;
 
-mod noise;
-
-fn save_png(world: &mut World) {
-    let max_iterations = 256u16;
-
-    let imgx: u32 = world.width as u32;
-    let imgy: u32 = world.height as u32;
-
-    let mut imbuf = image::ImageBuf::new(imgx, imgy);
-
-    for y in range(0, imgy) {
-        for x in range(0, imgx) {
-            let pixel = match world.sample(x as int, y as int) {
-                f if f < -0.2 => image::Rgb(20, 80, 163),
-                f if f <  0.0 => image::Rgb(156, 196, 251),
-                f if f <  0.2 => image::Rgb(235, 224, 168),
-                f if f <  0.5 => image::Rgb(158, 191, 105),
-                f if f <  1.2 => image::Rgb(79, 120, 14),
-                f if f <  1.5 => image::Rgb(94, 102, 112),
-                _ => image::Rgb(250, 250, 250),
-            };
-            imbuf.put_pixel(x, y, pixel);
-        }
-    }
-
-   // Save the image as "fractal.png"
-   let fout = File::create(&Path::new("fractal.png")).unwrap();
-
-   //We must indicate the image's color type and what format to save as.
-   let _    = image::ImageRgb8(imbuf).save(fout, image::PNG);
-}
-
-fn modulo(a: int, b: int) -> int {
-    (((a % b) + b) % b)
-}
+mod png;
+mod mask;
+mod util;
 
 struct World {
     map: Vec<f32>,
@@ -104,28 +69,38 @@ impl World {
                 } else {
                     rng.gen_range(-1.0, 1.0)
                 };
-
-                
                 self.map.push(value);
             }
         }
-        self.set_sample(0, 0, -2.0);
-        self.set_sample(200, 0, -2.0);
-        self.set_sample(0, 200, -2.0);
-        self.set_sample(200, 200, -2.0);
-        self.set_sample(100, 100, 2.0);
     }
 
+    pub fn get_neighbourhood(&mut self, x: int, y: int) -> Vec<util::Point> {
+        let mut result: Vec<util::Point>  = Vec::new();
 
-    pub fn sample(&mut self, x: int, y: int) -> f32 {
-        self.map[(modulo(x ,(self.width - 1)) + modulo(y ,(self.height - 1)) * self.width) as uint]
+        for a in range(-1i, 2) {
+            for b in range(-1i, 2) {
+                if a != 0 || b != 0 {
+                    if x + a >= 0 && x + a < self.width && y + b >= 0 && y + b < self.height {
+                        result.push(util::Point{ x: x + a, y: y + b });
+                    }
+                }
+            }
+        }
+
+        let mut shuffle = result.as_mut_slice();
+        task_rng().shuffle(shuffle);
+        shuffle.into_vec()
     }
 
-    pub fn set_sample(&mut self, x: int, y: int, val: f32) {
-        *self.map.get_mut((modulo(x ,(self.width)) + modulo(y, (self.height)) * self.width) as uint) = val;
+    fn sample(&mut self, x: int, y: int) -> f32 {
+        self.map[(util::modulo(x ,(self.width - 1)) + util::modulo(y ,(self.height - 1)) * self.width) as uint]
     }
 
-    pub fn sample_square(&mut self, x: int, y: int, step: int, value: f32) {
+    fn set_sample(&mut self, x: int, y: int, val: f32) {
+        *self.map.get_mut((util::modulo(x ,(self.width)) + util::modulo(y, (self.height)) * self.width) as uint) = val;
+    }
+
+    fn sample_square(&mut self, x: int, y: int, step: int, value: f32) {
         let hs: int = step / 2;
 
         let a = self.sample(x - hs, y - hs);
@@ -136,7 +111,7 @@ impl World {
         self.set_sample(x, y, ((a + b + c + d) / 4.0) + value);
     }
 
-    pub fn sample_diamond(&mut self, x: int, y: int, step: int, value: f32) {
+    fn sample_diamond(&mut self, x: int, y: int, step: int, value: f32) {
         let hs: int = step / 2;
 
         let a = self.sample(x - hs, y);
@@ -147,7 +122,7 @@ impl World {
         self.set_sample(x, y, ((a + b + c + d) / 4.0) + value);
     }
 
-    pub fn diamond_square(&mut self, step: int, scale: f32) {
+    fn diamond_square(&mut self, step: int, scale: f32) {
         let hs: int = step / 2;
         let mut rng = task_rng();
 
@@ -171,9 +146,12 @@ fn main() {
     let mut world = World::new(200i, 200i);
     world.generate(16i);
 
-    save_png(&mut world);
+    //png::save(&mut world);
+    let nb = world.get_neighbourhood(10, 10);
+    println!("{}", nb);
 
-    noise::tester();
+
+    
 }
 
 
