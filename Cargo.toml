@@ -4,10 +4,15 @@ name = "procedural-islands-rs"
 version = "0.0.1"
 authors = ["Velais <velais@live.com>"]
 
-[dependencies.image]
-
-git = "https://github.com/PistonDevelopers/rust-image"
+#[dependencies.image]
+#
+#git = "https://github.com/PistonDevelopers/rust-image"
 
 [dependencies.num]
 
 git = "https://github.com/rust-lang/num.git"
+
+[dependencies]
+image = "0.10.4"
+rand = "0.3.15"
+cfor = "1.1.0"

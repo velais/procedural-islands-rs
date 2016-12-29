@@ -1,22 +1,21 @@
-extern crate libc;
 extern crate num;
+extern crate rand;
+#[macro_use] extern crate cfor;
 
-use std::rand::{task_rng, Rng};
-use std::iter::range_step;
-use num::complex::Complex;
+
+use rand::{ Rng, thread_rng };
 
 mod png;
-mod mask;
 mod util;
 
-struct World {
+pub struct World {
     map: Vec<f32>,
-    width: int,
-    height: int,
+    width: i32,
+    height: i32,
 }
 
 impl World {
-    pub fn new(w: int, h: int) -> World {
+    pub fn new(w: i32, h: i32) -> World {
         World {
             map: Vec::new(),
             width: w,
@@ -48,7 +47,7 @@ impl World {
         }
     }
 
-    pub fn generate(&mut self, size: int) {
+    pub fn generate(&mut self, size: i32) {
         let mut scale: f32 = 1.0;
         let mut sample_size = size;
 
@@ -61,9 +60,8 @@ impl World {
     }
 
     fn seed(&mut self) {
-        let mut rng = task_rng();
-        for y in range(0i, self.height) {
-            for x in range(0i, self.width) {
+        for y in 0 .. self.height {
+            for x in 0 .. self.width {
                 let value = if y < 5 || y > 195 || x < 5 || x > 195 {
                     -1.5f32
                 } else {
@@ -75,11 +73,11 @@ impl World {
         }
     }
 
-    pub fn get_neighbourhood(&mut self, x: int, y: int) -> Vec<util::Point> {
+    pub fn get_neighbourhood(&mut self, x: i32, y: i32) -> Vec<util::Point> {
         let mut result: Vec<util::Point>  = Vec::new();
 
-        for a in range(-1i, 2) {
-            for b in range(-1i, 2) {
+        for a in -1 .. 2 {
+            for b in -1 .. 2 {
                 if a != 0 || b != 0 {
                     if x + a >= 0 && x + a < self.width && y + b >= 0 && y + b < self.height {
                         result.push(util::Point{ x: x + a, y: y + b });
@@ -89,59 +87,62 @@ impl World {
         }
 
         let mut shuffle = result.as_mut_slice();
-        task_rng().shuffle(shuffle);
-        shuffle.into_vec()
+        thread_rng().shuffle(shuffle);
+        shuffle.to_vec()
     }
 
     pub fn rolling_particles(&mut self) {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
 
         let center_bias = false;
         let edge_bias = 25f32;
-        let particle_length = 100u;
+        let particle_length = 100;
 
-        for iterations in range(0i, 3000) {
+        for _ in 0 .. 3000 {
             let (mut source_x, mut source_y) =  match center_bias {
                 true =>
-                    ((rng.gen_range(0.0, 1.0) * (self.width as f32 - (edge_bias * 2f32)) + edge_bias) as uint,
-                     (rng.gen_range(0.0, 1.0) * (self.height as f32 - (edge_bias * 2f32)) + edge_bias) as uint),
+                    ((rng.gen_range(0.0, 1.0) * (self.width as f32 - (edge_bias * 2f32)) + edge_bias) as i32,
+                     (rng.gen_range(0.0, 1.0) * (self.height as f32 - (edge_bias * 2f32)) + edge_bias) as i32),
                 false =>
-                    ((rng.gen_range(0.0, 1.0) * self.width as f32 - 1f32) as uint,
-                     (rng.gen_range(0.0, 1.0) * self.height as f32 - 1f32) as uint)
+                    ((rng.gen_range(0.0, 1.0) * self.width as f32 - 1f32) as i32,
+                     (rng.gen_range(0.0, 1.0) * self.height as f32 - 1f32) as i32)
             };
                     
-            for l in range(0, particle_length) {
-                source_x += ((rng.gen_range(0.0, 1.0) * 2f32 - 1f32).round()) as uint;
-                source_y += ((rng.gen_range(0.0, 1.0) * 2f32 - 1f32).round()) as uint;
+            for _ in 0 .. particle_length {
+                source_x += ((rng.gen_range(0.0, 1.0) * 2f32 - 1f32).round()) as i32;
+                source_y += ((rng.gen_range(0.0, 1.0) * 2f32 - 1f32).round()) as i32;
 
-                if source_x < 1 || source_x > self.width as uint - 2 || source_y < 1 || source_y > self.height as uint - 2 {
+                if source_x < 1 || source_x > self.width as i32 - 2 || source_y < 1 || source_y > self.height as i32 - 2 {
                     break;
                 }
 
-                let mut hood = self.get_neighbourhood(source_x as int, source_y as int);
-                for i in range(0u, hood.len()) {
-                    if self.sample(hood[i].x, hood[i].y) < self.sample(source_x as int, source_y as int) {
-                        source_x = hood[i].x as uint;
-                        source_y = hood[i].y as uint;
+                let hood = self.get_neighbourhood(source_x as i32, source_y as i32);
+                for i in 0 .. hood.len() {
+                    if self.sample(hood[i].x, hood[i].y) < self.sample(source_x as i32, source_y as i32) {
+                        source_x = hood[i].x as i32;
+                        source_y = hood[i].y as i32;
                         break;
                     }
                 }
-                let current = self.sample(source_x as int, source_y as int);
-                self.set_sample(source_x as int, source_y as int, current + 0.1f32);
+                let current = self.sample(source_x as i32, source_y as i32);
+                self.set_sample(source_x as i32, source_y as i32, current + 0.1f32);
             }
         }
     }
 
-    fn sample(&mut self, x: int, y: int) -> f32 {
-        self.map[(util::modulo(x ,(self.width - 1)) + util::modulo(y ,(self.height - 1)) * self.width) as uint]
+    fn sample(&mut self, x: i32, y: i32) -> f32 {
+        self.map[(util::modulo(x ,(self.width - 1)) + util::modulo(y ,(self.height - 1)) * self.width) as usize]
     }
 
-    fn set_sample(&mut self, x: int, y: int, val: f32) {
-        *self.map.get_mut((util::modulo(x ,(self.width)) + util::modulo(y, (self.height)) * self.width) as uint) = val;
+    fn set_sample(&mut self, x: i32, y: i32, val: f32) {
+        let index = (util::modulo(x ,(self.width)) + util::modulo(y, (self.height)) * self.width) as usize;
+        if let Some(sample) = self.map.get_mut(index) {
+            *sample = val;
+        };
     }
 
-    fn sample_square(&mut self, x: int, y: int, step: int, value: f32) {
-        let hs: int = step / 2;
+    fn sample_square(&mut self, x: i32, y: i32, step: i32, value: f32) {
+        let hs: i32 = step / 2;
 
         let a = self.sample(x - hs, y - hs);
         let b = self.sample(x + hs, y - hs);
@@ -151,8 +152,8 @@ impl World {
         self.set_sample(x, y, ((a + b + c + d) / 4.0) + value);
     }
 
-    fn sample_diamond(&mut self, x: int, y: int, step: int, value: f32) {
-        let hs: int = step / 2;
+    fn sample_diamond(&mut self, x: i32, y: i32, step: i32, value: f32) {
+        let hs: i32 = step / 2;
 
         let a = self.sample(x - hs, y);
         let b = self.sample(x + hs, y);
@@ -162,32 +163,31 @@ impl World {
         self.set_sample(x, y, ((a + b + c + d) / 4.0) + value);
     }
 
-    fn diamond_square(&mut self, step: int, scale: f32) {
-        let hs: int = step / 2;
-        let mut rng = task_rng();
+    fn diamond_square(&mut self, step: i32, scale: f32) {
+        let hs: i32 = step / 2;
+        let mut rng = thread_rng();
 
-        for y in range_step(hs, self.height + hs, step) {
-            for x in range_step(hs, self.width + hs, step) {
+        cfor!{let mut y = hs; y < self.height + hs; y += step; {
+            cfor!{let mut x = hs; x < self.width + hs; x += step; {
                 self.sample_square(x, y, step, rng.gen_range(-1.0, 1.0) * scale);
-            }
-        }
+            }}
+        }}
 
-        for y in range_step(0i, self.height, step) {
-            for x in range_step(0i, self.width, step) {
+        cfor!{let mut y = 0; y < self.height; y += step; {
+            cfor!{let mut x = 0; x < self.width; x += step; {
                 self.sample_diamond(x + hs, y, step, rng.gen_range(-1.0, 1.0) * scale);
                 self.sample_diamond(x, y + hs, step, rng.gen_range(-1.0, 1.0) * scale);
-            }
-        }
+            }}
+        }}
     }
 }
 
 
 fn main() {
-    let mut world = World::new(200i, 200i);
-    world.generate(16i);
-    world.seed();
+    let mut world = World::new(200, 200);
+    world.generate(16);
+    world.rolling_particles();
 
-    let pm = world.rolling_particles();
     png::save(&mut world);
 }
 
